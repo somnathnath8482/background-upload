@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "background-upload": ["../src/index"],
+      "background-upload/*": ["../src/*"]
+    }
+  }
+}
