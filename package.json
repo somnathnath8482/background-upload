@@ -1,25 +1,41 @@
 {
   "name": "background-upload",
   "version": "0.1.0",
-  "description": "upload file in background workmanager/nssession",
+  "description": "Production-ready React Native background upload module for presigned PUT URLs",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "react-native": "src/index",
+  "source": "src/index",
+  "files": [
+    "src",
+    "android",
+    "ios",
+    "build",
+    "react-native.config.js",
+    "!android/build",
+    "!ios/build",
+    "!**/*.log"
+  ],
+  "exports": {
+    ".": {
+      "react-native": "./src/index.ts",
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    }
+  },
   "scripts": {
-    "build": "expo-module build",
-    "clean": "expo-module clean",
-    "lint": "expo-module lint",
-    "test": "expo-module test",
-    "prepare": "expo-module prepare",
-    "prepublishOnly": "expo-module prepublishOnly",
-    "expo-module": "expo-module",
+    "build": "tsc -p tsconfig.json",
+    "clean": "node -e \"require('fs').rmSync('build',{recursive:true,force:true})\"",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "prepare": "npm run build",
     "open:ios": "xed example/ios",
     "open:android": "open -a \"Android Studio\" example/android"
   },
   "keywords": [
     "react-native",
-    "expo",
     "background-upload",
-    "BackgroundUpload"
+    "presigned-url",
+    "turbomodule"
   ],
   "repository": "https://github.com/somnathnath8482/background-upload",
   "bugs": {
@@ -30,14 +46,20 @@
   "homepage": "https://github.com/somnathnath8482/background-upload#readme",
   "dependencies": {},
   "devDependencies": {
-    "@types/react": "~19.1.1",
-    "expo-module-scripts": "^55.0.2",
-    "expo": "^55.0.3",
-    "react-native": "0.82.1"
+    "@types/react": "^19.0.0",
+    "@types/react-native": "^0.73.0",
+    "typescript": "^5.8.2"
   },
   "peerDependencies": {
-    "expo": "*",
-    "react": "*",
-    "react-native": "*"
+    "react": ">=18",
+    "react-native": ">=0.76"
+  },
+  "codegenConfig": {
+    "name": "BackgroundUploadSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.easy.bg"
+    }
   }
 }

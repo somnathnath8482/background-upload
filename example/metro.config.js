@@ -3,24 +3,31 @@ const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
 const config = getDefaultConfig(__dirname);
+const appNodeModules = path.resolve(__dirname, 'node_modules');
+const rootNodeModules = path.resolve(__dirname, '..', 'node_modules');
 
-// npm v7+ will install ../node_modules/react and ../node_modules/react-native because of peerDependencies.
-// To prevent the incompatible react-native between ./node_modules/react-native and ../node_modules/react-native,
-// excludes the one from the parent folder when bundling.
-config.resolver.blockList = [
-  ...Array.from(config.resolver.blockList ?? []),
-  new RegExp(path.resolve('..', 'node_modules', 'react')),
-  new RegExp(path.resolve('..', 'node_modules', 'react-native')),
-];
+function toBlockRegex(targetPath) {
+  const escaped = targetPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped}[/\\\\].*`);
+}
 
 config.resolver.nodeModulesPaths = [
-  path.resolve(__dirname, './node_modules'),
-  path.resolve(__dirname, '../node_modules'),
+  appNodeModules,
 ];
 
 config.resolver.extraNodeModules = {
   'background-upload': '..',
+  react: path.resolve(appNodeModules, 'react'),
+  'react-native': path.resolve(appNodeModules, 'react-native'),
 };
+
+config.resolver.blockList = [
+  ...Array.from(config.resolver.blockList ?? []),
+  toBlockRegex(path.resolve(rootNodeModules, 'react')),
+  toBlockRegex(path.resolve(rootNodeModules, 'react-native')),
+];
+
+config.resolver.disableHierarchicalLookup = true;
 
 config.watchFolders = [path.resolve(__dirname, '..')];
 
