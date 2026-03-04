@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.database.Cursor
 import android.net.Uri
 import android.os.Build
@@ -151,7 +152,15 @@ internal class UploadWorker(
 
   private fun createForegroundInfo(uploadId: String, progressPercent: Int): ForegroundInfo {
     val notification = buildNotification(uploadId, progressPercent, inProgress = true)
-    return ForegroundInfo(notificationId(uploadId), notification)
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      ForegroundInfo(
+        notificationId(uploadId),
+        notification,
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+      )
+    } else {
+      ForegroundInfo(notificationId(uploadId), notification)
+    }
   }
 
   private fun buildNotification(

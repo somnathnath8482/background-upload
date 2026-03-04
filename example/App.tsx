@@ -17,11 +17,14 @@ type BackgroundUploadApi = {
   UPLOAD_PROGRESS_EVENT: string;
   addListener: (event: string, callback: (event: any) => void) => EmitterSubscription;
   cancelUpload: (uploadId: string) => Promise<void>;
+  getNotificationPermissionStatus: () => Promise<string>;
+  requestNotificationPermission: () => Promise<string>;
   startUpload: (options: {
     uploadId: string;
     fileUri: string;
     uploadUrl: string;
     contentType: string;
+    requestNotificationPermissionOnStart?: boolean;
   }) => Promise<void>;
 };
 
@@ -35,9 +38,9 @@ const DEFAULT_UPLOAD_ID = `upload-${Date.now()}`;
 
 export default function App() {
   const [uploadId, setUploadId] = React.useState(DEFAULT_UPLOAD_ID);
-  const [fileUri, setFileUri] = React.useState();
-  const [uploadUrl, setUploadUrl] = React.useState('https://s3.easysent.cloud/community/POSTU/ae6bdf84-1f58-455f-a480-e224a78a7647-spm.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=admin%2F20260302%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260302T151936Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=e02e10ab305bcee9ae1b0ee71399e37b99e7eb4c595619490adb6782b8e5a89d');
-  const [contentType, setContentType] = React.useState();
+  const [fileUri, setFileUri] = React.useState('');
+  const [uploadUrl, setUploadUrl] = React.useState('');
+  const [contentType, setContentType] = React.useState('');
   const [statusText, setStatusText] = React.useState('Idle');
 
   React.useEffect(() => {
@@ -46,10 +49,20 @@ export default function App() {
       return;
     }
 
+    void (async () => {
+      try {
+        const status = await BackgroundUpload.requestNotificationPermission();
+        setStatusText(`Notification permission: ${status}`);
+      } catch (error) {
+        setStatusText(`Permission request failed: ${(error as Error).message}`);
+      }
+    })();
+
     let progressSub: EmitterSubscription | undefined;
     let completionSub: EmitterSubscription | undefined;
     try {
       progressSub = BackgroundUpload.addListener(BackgroundUpload.UPLOAD_PROGRESS_EVENT, event => {
+        console.log(event.progress);
         setStatusText(
           `Uploading ${event.uploadId}: ${(event.progress * 100).toFixed(1)}% (${event.bytesSent}/${event.totalBytes})`
         );
@@ -87,6 +100,7 @@ export default function App() {
         fileUri,
         uploadUrl,
         contentType,
+        requestNotificationPermissionOnStart: true,
       });
       setStatusText(`Upload enqueued: ${uploadId}`);
     } catch (error) {
@@ -108,17 +122,14 @@ export default function App() {
   };
 
   const picMedias = async () => {
-
-
-    await pickMedia("image",1,(its)=>{
-
-      if(!!its && its.length>0 && its[0].uri){
-        console.log(its[0])
-        setFileUri(its[0].uri)
-        setContentType(its[0].mimeType)
+    await pickMedia('image', 1, its => {
+      if (!!its && its.length > 0 && its[0].uri) {
+        console.log(its[0]);
+        setFileUri(its[0].uri);
+        setContentType(its[0].mimeType ?? '');
       }
-    })
-  }
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>

@@ -12,3 +12,6 @@ __tests__
 /android/src/test/
 /android/build/
 /example/
+/node_modules/
+*.log
+.DS_Store

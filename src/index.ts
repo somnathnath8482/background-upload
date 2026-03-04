@@ -2,6 +2,7 @@ import {
   DeviceEventEmitter,
   NativeEventEmitter,
   NativeModules,
+  PermissionsAndroid,
   Platform,
   type EmitterSubscription,
 } from 'react-native';
@@ -13,6 +14,7 @@ import {
   UPLOAD_COMPLETION_EVENT,
   UPLOAD_PROGRESS_EVENT,
   type StartUploadOptions,
+  type NotificationPermissionStatus,
   type UploadCompletionEvent,
   type UploadEventName,
   type UploadProgressEvent,
@@ -47,6 +49,9 @@ const eventEmitter: EventEmitterLike | undefined =
     ? deviceEmitter ?? moduleEmitter
     : moduleEmitter ?? deviceEmitter;
 
+const isAndroidNotificationRuntimePermissionRequired = (): boolean =>
+  Platform.OS === 'android' && typeof Platform.Version === 'number' && Platform.Version >= 33;
+
 function getNativeModule(): NativeBackgroundUploadModuleSpec {
   const module =
     NativeBackgroundUploadModule ??
@@ -72,9 +77,70 @@ function assertValidOptions(options: StartUploadOptions): void {
   assertNonEmptyString(options.contentType, 'contentType');
 }
 
+export async function getNotificationPermissionStatus(): Promise<NotificationPermissionStatus> {
+  if (!isAndroidNotificationRuntimePermissionRequired()) {
+    return 'unavailable';
+  }
+
+  const granted = await PermissionsAndroid.check(
+    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+  );
+  return granted ? 'granted' : 'denied';
+}
+
+export async function requestNotificationPermission(): Promise<NotificationPermissionStatus> {
+  if (!isAndroidNotificationRuntimePermissionRequired()) {
+    return 'unavailable';
+  }
+
+  const result = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    {
+      title: 'Notification permission',
+      message:
+        'Background uploads need notification permission to run foreground upload service on Android.',
+      buttonPositive: 'Allow',
+      buttonNegative: 'Deny',
+    }
+  );
+
+  if (result === PermissionsAndroid.RESULTS.GRANTED) {
+    return 'granted';
+  }
+  if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+    return 'never_ask_again';
+  }
+  return 'denied';
+}
+
 export async function startUpload(options: StartUploadOptions): Promise<void> {
   assertValidOptions(options);
-  await getNativeModule().startUpload(options);
+
+  const shouldRequestNotificationPermission =
+    options.requestNotificationPermissionOnStart ?? true;
+
+  if (isAndroidNotificationRuntimePermissionRequired()) {
+    const existingStatus = await getNotificationPermissionStatus();
+    const status =
+      existingStatus === 'granted'
+        ? existingStatus
+        : shouldRequestNotificationPermission
+          ? await requestNotificationPermission()
+          : existingStatus;
+
+    if (status !== 'granted') {
+      throw new Error(
+        'BackgroundUpload: POST_NOTIFICATIONS permission is required for foreground upload on Android 13+.'
+      );
+    }
+  }
+
+  await getNativeModule().startUpload({
+    uploadId: options.uploadId,
+    fileUri: options.fileUri,
+    uploadUrl: options.uploadUrl,
+    contentType: options.contentType,
+  });
 }
 
 export async function cancelUpload(uploadId: string): Promise<void> {
@@ -101,6 +167,8 @@ export function addListener<E extends UploadEventName>(
 const BackgroundUpload = {
   startUpload,
   cancelUpload,
+  getNotificationPermissionStatus,
+  requestNotificationPermission,
   addListener,
 };
 
@@ -109,6 +177,7 @@ export default BackgroundUpload;
 export {
   UPLOAD_COMPLETION_EVENT,
   UPLOAD_PROGRESS_EVENT,
+  type NotificationPermissionStatus,
   type StartUploadOptions,
   type UploadCompletionEvent,
   type UploadProgressEvent,

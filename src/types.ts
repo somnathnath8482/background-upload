@@ -3,7 +3,14 @@ export type StartUploadOptions = {
   fileUri: string;
   uploadUrl: string;
   contentType: string;
+  requestNotificationPermissionOnStart?: boolean;
 };
+
+export type NotificationPermissionStatus =
+  | 'granted'
+  | 'denied'
+  | 'never_ask_again'
+  | 'unavailable';
 
 export type UploadProgressEvent = {
   uploadId: string;
